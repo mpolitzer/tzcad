@@ -76,7 +76,6 @@ static void create_raymarching_canvas(void) {
 }
 
 static void setup_cam(struct camera_t *me, tz_mat4 *o) {
-#if 1
 	float sp = sin(me->phi),   cp = cos(me->phi),
 	      st = sin(me->theta), ct = cos(me->theta),
 	      r  = me->rho;
@@ -86,29 +85,17 @@ static void setup_cam(struct camera_t *me, tz_mat4 *o) {
 	tz_mat4_lookat(o, tz_vec4_add(eye,at), at, up);
 	//tz_mat4_print(o);
 	//printf("\n");
-#else
-	tz_mat4_set_translation(o, tz_vec4_mkp(me->x, me->y, me->z));
-	//tz_mat4_rotate(o, me->phi,   tz_vec4_mkv( 0, 1, 0));
-	//tz_mat4_rotate(o, me->theta, tz_vec4_mkv(-1, 0, 0));
-
-#endif
 }
 
 static void draw_canvas(void) {
-	tz_mat4 MV, P, MVP, iMVP;
+	tz_mat4 MV, P;
 
-	tz_mat4_perspective(&P, 45, 800.0/800.0, 1, 100);
+	int w,h;
+	SDL_GetWindowSize(g_w.win, &w, &h);
+	tz_mat4_perspective(&P, 90, w/(float)h, 1, 100);
 	setup_cam(&g_camera, &MV);
-
-	tz_mat4_mul(&MVP, &MV, &P);
-	tz_mat4_inverse(&iMVP, &MVP);
-
-	//tz_mat4_print(&MVP);
-	//printf("\n");
-
 	glUniformMatrix4fv(0, 1, GL_TRUE, MV.f);
-	glUniformMatrix4fv(1, 1, GL_TRUE, P.f);
-	glUniformMatrix4fv(2, 1, GL_TRUE, iMVP.f);
+	glUniformMatrix4fv(1, 1, GL_TRUE,  P.f);
 
 	glBindVertexArray(vao);
 	glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
@@ -146,7 +133,7 @@ int main(int argc, const char *argv[]) {
 			case SDL_MOUSEMOTION: {
 				int x, y;
 				if (SDL_GetMouseState(&x, &y)) {
-					g_camera.phi   += M_PI*e.motion.xrel/800.0;
+					g_camera.phi   -= M_PI*e.motion.xrel/800.0;
 					g_camera.theta += M_PI*e.motion.yrel/800.0;
 				}
 				break;

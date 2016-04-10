@@ -35,10 +35,12 @@ light_t lights[] = light_t[](
 	light_t(vec3( 3,-4, 2), vec3(0.5, 0.1, 0.05))
 );
 
+/* -------------------------------------------------------------------------- */
 layout(location = 0) uniform mat4 u_mv;
 layout(location = 1) uniform mat4 u_p;
-layout(location = 2) uniform mat4 u_imvp;
 
+/* ro - ray origin
+ * rd - ray direction <- requires normalization */
 in  vec3 v_ro;
 in  vec3 v_rd;
 out vec4 color;
@@ -60,11 +62,10 @@ float box(vec3 p, vec3 b) {
 	return length(max(d, vec3(0))) + vmax(min(d, vec3(0)));
 }
 
-
 float scene(vec3 p)
 {
 	p.x = mod(p.x, 5) - 2.5;
-	//p.z = mod(p.z, 5) - 2.5;
+	p.z = mod(p.z, 5) - 2.5;
 	float sphere0 = length(p)-1;
 
 	return sphere0;
@@ -87,7 +88,7 @@ float trace(vec3 ro, vec3 rd, int n) {
 }
 
 /* sample around p to calculate the normal */
-vec3 pos2normal(vec3 p) {
+vec3 normal(vec3 p) {
 	float e = 1e-5;
 	vec3 n = vec3(
 			scene(p+vec3(e,0,0))-scene(p-vec3(e,0,0)),
@@ -96,47 +97,40 @@ vec3 pos2normal(vec3 p) {
 	return normalize(n);
 }
 
+bool apply_light(vec3 s, vec3 rd, vec3 n, int li, int mi, inout vec4 color)
+{
+	vec3  ldir  = normalize(lights[li].position - s);
+	float llen  = length   (lights[li].position - s);
+	float ldotn = dot(ldir,n);
+	float att   = 1/dot(vec3(1, llen, llen*llen), lights[li].attenuation);
+
+	vec3 ambient = att*materials[mi].ambient;
+	color+= att*vec4(ambient,0);
+
+	if (ldotn <= 0.0)
+		return false;
+
+	vec3 diffuse = att*materials[mi].diffuse*ldotn;
+	color+= vec4(diffuse,0);
+
+	// specular
+	vec3 r = reflect(ldir, n);
+	float specular = att*pow(max(0.0, dot(rd, r)), materials[0].shininess);
+	color += vec4(specular*materials[0].specular, 0);
+
+	return true;
+}
+
 void main()
 {
-#if 1
 	vec3 ro = v_ro;
 	vec3 rd = normalize(v_rd);
 
 	float d = trace(ro, rd, 128);
 	vec3  s = ro + d*rd;
 
-	if (d < 500) {
-		vec3 n = pos2normal(s);
-		vec4 t_color = vec4(0, 0, 0, 1);
-
-		if (true) {
-			for (int li=0; li<lights.length(); ++li) {
-				vec3  l     = normalize(lights[li].position - s);
-				float ldotn = dot(l,n);
-
-				if (ldotn <= 0.0)
-					continue;
-
-				float llen  = length(lights[li].position - s);
-				float att   = 1/dot(vec3(1, llen, llen*llen), lights[li].attenuation);
-
-				// diffuse contribution
-				float diffuse = att*max(0.0, dot(l, n));
-				t_color += vec4(diffuse*materials[0].diffuse, 0);
-
-				// specular
-				float specular = att*pow(max(0.0, dot(rd, reflect(l, n))), materials[0].shininess);;
-				t_color += vec4(specular*materials[0].specular, 0);
-			}
-			color = t_color;
-		} else {
-			color = vec4(d,d,d,1);
-		}
-
-	} else {
-		discard;
+	color = vec4(0,0,0,1);
+	for (int li=0; li<lights.length(); ++li) {
+		apply_light(s, rd, normal(s), 0, 0, color);
 	}
-#else
-	color = vec4(1, 1, 1, 1);
-#endif
 }
