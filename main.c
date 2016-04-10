@@ -48,17 +48,17 @@ static void create_raymarching_canvas(void) {
 
 
 	shader_create(&g_s);
-	if ((vert = readfile("./tzeda.vert", &len))) {
+	if ((vert = readfile("./tzcad.vert", &len))) {
 		shader_compile(&g_s, vert, GL_VERTEX_SHADER);
 		free(vert);
 	}
-	else SDL_assert("shader tzeda.vert not found");
+	else SDL_assert("shader tzcad.vert not found");
 
-	if ((frag = readfile("./tzeda.frag", &len))) {
+	if ((frag = readfile("./tzcad.frag", &len))) {
 		shader_compile(&g_s, frag, GL_FRAGMENT_SHADER);
 		free(frag);
 	}
-	else SDL_assert("shader tzeda.frag not found");
+	else SDL_assert("shader tzcad.frag not found");
 
 	shader_link(&g_s);
 	shader_bind(&g_s);
@@ -92,7 +92,7 @@ static void draw_canvas(void) {
 
 	int w,h;
 	SDL_GetWindowSize(g_w.win, &w, &h);
-	tz_mat4_perspective(&P, 90, w/(float)h, 1, 100);
+	tz_mat4_perspective(&P, 120, h/(float)w, 1, 100);
 	setup_cam(&g_camera, &MV);
 	glUniformMatrix4fv(0, 1, GL_TRUE, MV.f);
 	glUniformMatrix4fv(1, 1, GL_TRUE,  P.f);
@@ -111,7 +111,7 @@ int main(int argc, const char *argv[]) {
 	g_camera.rho = 10;
 
 	SDL_Init(SDL_INIT_EVERYTHING);
-	tz_window_create(&g_w, 800, 800, false);
+	tz_window_create(&g_w, 1280, 720, false);
 
 	create_raymarching_canvas();
 
@@ -133,8 +133,8 @@ int main(int argc, const char *argv[]) {
 			case SDL_MOUSEMOTION: {
 				int x, y;
 				if (SDL_GetMouseState(&x, &y)) {
-					g_camera.phi   -= M_PI*e.motion.xrel/800.0;
-					g_camera.theta += M_PI*e.motion.yrel/800.0;
+					g_camera.phi   -= M_PI*e.motion.xrel/720.0;
+					g_camera.theta += M_PI*e.motion.yrel/1280.0;
 				}
 				break;
 			}

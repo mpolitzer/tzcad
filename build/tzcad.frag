@@ -30,9 +30,10 @@ material_t materials[] = material_t[](
 );
 
 light_t lights[] = light_t[](
-	light_t(vec3( 0, 5, 0), vec3(0.5, 0.1, 0.05)),
-	light_t(vec3(-3, 2, 2), vec3(0.5, 0.1, 0.05)),
-	light_t(vec3( 3,-4, 2), vec3(0.5, 0.1, 0.05))
+	light_t (vec3(-4,  9, 0), vec3(0.1, 0.01, 0.02))
+	//light_t(vec3( 0, 5, 0), vec3(0.5, 0.1, 0.05))
+	,light_t(vec3( 7, 11, 7), vec3(0.1, 0.01, 0.02))
+	//,light_t(vec3( 3,-4, 2), vec3(0.5, 0.1, 0.05))
 );
 
 /* -------------------------------------------------------------------------- */
@@ -64,11 +65,14 @@ float box(vec3 p, vec3 b) {
 
 float scene(vec3 p)
 {
-	p.x = mod(p.x, 5) - 2.5;
-	p.z = mod(p.z, 5) - 2.5;
-	float sphere0 = length(p)-1;
+	vec3 p_ = p;
+	p_.x = mod(p.x, 5) - 2.5;
+	p_.z = mod(p.z, 5) - 2.5;
+	float sphere0 = length(p_)-1;
 
-	return sphere0;
+	float plane = box(p+vec3(0,2,0), vec3(20, 0.1, 20));
+
+	return min(min(sphere0, plane), -box(p, vec3(20, 20, 20)));
 }
 
 /* ro - ray origin
@@ -113,10 +117,18 @@ bool apply_light(vec3 s, vec3 rd, vec3 n, int li, int mi, inout vec4 color)
 	vec3 diffuse = att*materials[mi].diffuse*ldotn;
 	color+= vec4(diffuse,0);
 
-	// specular
-	vec3 r = reflect(ldir, n);
-	float specular = att*pow(max(0.0, dot(rd, r)), materials[0].shininess);
-	color += vec4(specular*materials[0].specular, 0);
+	// AO
+	float ll = length(lights[li].position-s);
+	float ld = trace(lights[li].position, normalize(s-lights[li].position), 16);
+	float ao = ld/ll;
+	color = ao*color;
+
+	if (ao > 0.9) {
+		// specular
+		vec3 r = reflect(ldir, n);
+		float specular = att*pow(max(0.0, dot(rd, r)), materials[0].shininess);
+		color += vec4(specular*materials[0].specular, 0);
+	}
 
 	return true;
 }
@@ -126,11 +138,11 @@ void main()
 	vec3 ro = v_ro;
 	vec3 rd = normalize(v_rd);
 
-	float d = trace(ro, rd, 128);
+	float d = trace(ro, rd, 64);
 	vec3  s = ro + d*rd;
 
 	color = vec4(0,0,0,1);
 	for (int li=0; li<lights.length(); ++li) {
-		apply_light(s, rd, normal(s), 0, 0, color);
+		apply_light(s, rd, normal(s), li, 0, color);
 	}
 }
